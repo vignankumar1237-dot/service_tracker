@@ -59,34 +59,61 @@ export default function App() {
   };
 
   // 🔄 UPDATE STATUS
-  const update = async (id, step, phone) => {
-    await updateDoc(doc(db, "shops", shop, "jobs", id), { status: step });
+//   const update = async (id, step, phone) => {
+//     await updateDoc(doc(db, "shops", shop, "jobs", id), { status: step });
 
-    const trackLink = `${window.location.origin}/track/${shop}/${id}`;
+//     const trackLink = `${window.location.origin}/track/${shop}/${id}`;
 
-    // On START → open WhatsApp with pre-filled message
-    if (step === 1) {
-     const msg = encodeURIComponent(
-  `👋 Welcome to *${shopData?.shopName}*!\n\nYour vehicle has been received and work has started 🔧\n\nTrack your service live here 👇\n${trackLink}\n\n_Thank you for choosing us!_`
-);
-     const cleaned = phone.replace(/\D/g, "");
-const waPhone = cleaned.startsWith("91") && cleaned.length === 12
-  ? cleaned
-  : `91${cleaned.replace(/^0/, "")}`;
-      window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
-    }
+//     // On START → open WhatsApp with pre-filled message
+//     if (step === 1) {
+//      const msg = encodeURIComponent(
+//   `👋 Welcome to *${shopData?.shopName}*!\n\nYour vehicle has been received and work has started 🔧\n\nTrack your service live here 👇\n${trackLink}\n\n_Thank you for choosing us!_`
+// );
+//      const cleaned = phone.replace(/\D/g, "");
+// const waPhone = cleaned.startsWith("91") && cleaned.length === 12
+//   ? cleaned
+//   : `91${cleaned.replace(/^0/, "")}`;
+//       window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
+//     }
 
-    if (step === 3) {
-      // Notify ready — open WhatsApp
-     const msg = encodeURIComponent(
-  `✅ *${shopData?.shopName}* — Your vehicle is *ready for pickup!* 🎉\n\nPlease come collect at your convenience.\n\nTrack here 👇\n${trackLink}`
-);
-      const cleaned = phone.replace(/\D/g, "");
-      const waPhone = cleaned.startsWith("91") ? cleaned : `91${cleaned}`;
-      window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
-    }
-  };
+//     if (step === 3) {
+//       // Notify ready — open WhatsApp
+//      const msg = encodeURIComponent(
+//   `✅ *${shopData?.shopName}* — Your vehicle is *ready for pickup!* 🎉\n\nPlease come collect at your convenience.\n\nTrack here 👇\n${trackLink}`
+// );
+//       const cleaned = phone.replace(/\D/g, "");
+//       const waPhone = cleaned.startsWith("91") ? cleaned : `91${cleaned}`;
+//       window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
+//     }
+//   };
 
+const update = async (id, step, phone) => {
+  const trackLink = `${window.location.origin}/track/${shop}/${id}`;
+
+  if (step === 1) {
+    const msg = encodeURIComponent(
+      `👋 Welcome to *${shopData?.shopName}*!\n\nYour vehicle has been received and work has started 🔧\n\nTrack your service live here 👇\n${trackLink}\n\n_Thank you for choosing us!_`
+    );
+    const cleaned = phone.replace(/\D/g, "");
+    const waPhone = cleaned.startsWith("91") && cleaned.length === 12
+      ? cleaned
+      : `91${cleaned.replace(/^0/, "")}`;
+    window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
+  }
+
+  if (step === 3) {
+    const msg = encodeURIComponent(
+      `✅ *${shopData?.shopName}* — Your vehicle is *ready for pickup!* 🎉\n\nPlease come collect at your convenience.\n\nTrack here 👇\n${trackLink}`
+    );
+    const cleaned = phone.replace(/\D/g, "");
+    const waPhone = cleaned.startsWith("91") && cleaned.length === 12
+      ? cleaned
+      : `91${cleaned.replace(/^0/, "")}`;
+    window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
+  }
+
+  await updateDoc(doc(db, "shops", shop, "jobs", id), { status: step });
+};
   // 🗑 DELETE
   const remove = async (id) => {
     if (confirm("Delete this record?")) {
