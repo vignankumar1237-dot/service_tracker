@@ -4,6 +4,7 @@ import { compressShopLogo } from "./imageUtils";
 
 export default function ProfileSheet({ onClose }) {
   const { shopData, logout, updateProfile } = useAuth();
+  const isAdmin = shopData?.role === "admin";
   const [editing, setEditing] = useState(false);
   const [shopName, setShopName] = useState(shopData?.shopName || "");
   const [ownerPhone, setOwnerPhone] = useState(shopData?.ownerPhone || "");
@@ -79,8 +80,8 @@ export default function ProfileSheet({ onClose }) {
             </div>
           </div>
 
-          {/* Edit Section */}
-          {editing ? (
+          {/* Edit Section — admin only */}
+          {isAdmin && (editing ? (
             <div className="space-y-3">
               <input
                 className="w-full bg-white/8 border border-white/10 rounded-xl text-white py-3 px-4 text-sm outline-none focus:border-amber-400/50 transition-colors"
@@ -143,7 +144,7 @@ export default function ProfileSheet({ onClose }) {
             >
               ✏️ Edit Shop Details
             </button>
-          )}
+          ))}
 
           {/* Divider */}
           <div className="border-t border-white/8" />

@@ -115,8 +115,8 @@ export default function Item({ data, update, remove, isAdmin, shopData }) {
     window.location.href = `tel:${cleaned}`;
   };
 
-  // Latest pending part request
-  const pendingPart = data.partRequests?.slice().reverse().find(p => p.status === "pending");
+  // All pending part requests
+  const pendingParts = (data.partRequests || []).filter(p => p.status === "pending");
   const latestResponse = data.partRequests?.slice().reverse().find(p => p.status !== "pending");
 
   return (
@@ -183,21 +183,27 @@ export default function Item({ data, update, remove, isAdmin, shopData }) {
           </p>
         ) : null}
 
-        {/* Pending part request banner */}
-        {pendingPart && (
-          <div className="bg-amber-400/10 border border-amber-400/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
-            <span className="text-lg">⏳</span>
-            <div className="min-w-0 flex-1">
-              <p className="text-amber-400 text-xs font-semibold">Awaiting customer approval</p>
-              <p className="text-slate-400 text-xs truncate">
-                {pendingPart.partName} · ₹{pendingPart.price}
-              </p>
-            </div>
+        {/* Pending part request banners — one per pending request */}
+        {pendingParts.length > 0 && (
+          <div className="space-y-1.5">
+            {pendingParts.map((part, i) => (
+              <div key={i} className="bg-amber-400/10 border border-amber-400/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                <span className="text-lg">⏳</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-amber-400 text-xs font-semibold">
+                    Awaiting approval {pendingParts.length > 1 ? `(${i + 1}/${pendingParts.length})` : ""}
+                  </p>
+                  <p className="text-slate-400 text-xs truncate">
+                    {part.partName} · ₹{part.price}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
         {/* Latest response banner */}
-        {!pendingPart && latestResponse && (
+        {pendingParts.length === 0 && latestResponse && (
           <div className={`rounded-xl px-3 py-2.5 flex items-center gap-2 ${
             latestResponse.status === "approved"
               ? "bg-green-500/10 border border-green-500/25"

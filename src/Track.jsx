@@ -12,7 +12,7 @@ export default function Track() {
   const [data, setData] = useState(null);
   const [shopInfo, setShopInfo] = useState(null);
   const [responding, setResponding] = useState(false);
-  const [responseMsg, setResponseMsg] = useState("");
+  const [responseMsgs, setResponseMsgs] = useState({}); // { [index]: message }
 
   // Fetch shop info once
   useEffect(() => {
@@ -45,11 +45,10 @@ export default function Track() {
         partRequests: updatedRequests,
       });
 
-      if (decision === "approved") {
-        setResponseMsg("✅ You approved the part. The mechanic will proceed!");
-      } else {
-        setResponseMsg("❌ You rejected the part. The shop will contact you shortly.");
-      }
+      const msg = decision === "approved"
+        ? "✅ Approved! The mechanic will proceed."
+        : "❌ Rejected. The shop will contact you shortly.";
+      setResponseMsgs(prev => ({ ...prev, [pendingIndex]: msg }));
     } catch (e) {
       alert("Something went wrong. Please try again.");
     } finally {
@@ -80,9 +79,10 @@ export default function Track() {
   const pct = (data.status / (STEPS.length - 1)) * 100;
   const isDone = data.status === 3;
 
-  // Find the first pending part request and its index
-  const pendingPartIndex = data.partRequests?.findIndex(p => p.status === "pending") ?? -1;
-  const pendingPart = pendingPartIndex >= 0 ? data.partRequests[pendingPartIndex] : null;
+  // All pending part requests with their original indices
+  const pendingParts = (data.partRequests || [])
+    .map((p, i) => ({ ...p, originalIndex: i }))
+    .filter(p => p.status === "pending");
 
   // All responded part requests (history)
   const respondedParts = (data.partRequests || []).filter(p => p.status !== "pending");
@@ -132,85 +132,107 @@ export default function Track() {
           </div>
         )}
 
-        {/* ── PART APPROVAL CARD ── show when there's a pending request */}
-        {pendingPart && !responseMsg && (
-          <div className="bg-amber-400/10 border-2 border-amber-400/40 rounded-3xl p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🔩</span>
-              <div>
-                <p className="text-amber-400 font-bold text-sm">Part Replacement Needed</p>
-                <p className="text-slate-400 text-xs">Your mechanic needs your approval</p>
-              </div>
-            </div>
-
-            {/* Part details */}
-            <div className="bg-white/5 rounded-2xl p-4 space-y-2">
-              <div className="flex justify-between items-center">
-                <p className="text-slate-400 text-xs">Part</p>
-                <p className="text-white font-semibold text-sm">{pendingPart.partName}</p>
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-slate-400 text-xs">Estimated Cost</p>
-                <p className="text-amber-400 font-bold text-lg">₹{pendingPart.price}</p>
-              </div>
-            </div>
-
-            {/* Part photo if available */}
-            {pendingPart.photo && (
-              <div className="rounded-xl overflow-hidden">
-                <img src={pendingPart.photo} className="w-full h-36 object-cover" />
+        {/* ── PART APPROVAL CARDS ── one per pending request */}
+        {pendingParts.length > 0 && (
+          <div className="space-y-4">
+            {pendingParts.length > 1 && (
+              <div className="flex items-center gap-2 bg-amber-400/10 border border-amber-400/20 rounded-2xl px-4 py-2.5">
+                <span className="text-lg">🔩</span>
+                <p className="text-amber-400 text-sm font-semibold">
+                  {pendingParts.length} parts need your approval
+                </p>
               </div>
             )}
+            {pendingParts.map((part) => {
+              const idx = part.originalIndex;
+              const responded = responseMsgs[idx];
+              return (
+                <div key={idx} className="bg-amber-400/10 border-2 border-amber-400/40 rounded-3xl p-5 space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">🔩</span>
+                      <div>
+                        <p className="text-amber-400 font-bold text-sm">Part Replacement Needed</p>
+                        <p className="text-slate-400 text-xs">Your mechanic needs your approval</p>
+                      </div>
+                    </div>
+                    {pendingParts.length > 1 && (
+                      <span className="text-xs bg-amber-400/20 text-amber-300 px-2 py-1 rounded-lg font-semibold">
+                        {pendingParts.indexOf(part) + 1}/{pendingParts.length}
+                      </span>
+                    )}
+                  </div>
 
-            <p className="text-slate-400 text-xs text-center leading-relaxed">
-              Tap Approve to let the mechanic proceed, or Reject to discuss.
-              You can also call the shop directly.
-            </p>
+                  {/* Part details */}
+                  <div className="bg-white/5 rounded-2xl p-4 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <p className="text-slate-400 text-xs">Part</p>
+                      <p className="text-white font-semibold text-sm">{part.partName}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-slate-400 text-xs">Estimated Cost</p>
+                      <p className="text-amber-400 font-bold text-lg">₹{part.price}</p>
+                    </div>
+                  </div>
 
-            {/* Approve / Reject buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => respondToPartRequest(pendingPartIndex, "rejected")}
-                disabled={responding}
-                className="py-3.5 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-60"
-              >
-                ❌ Reject
-              </button>
-              <button
-                onClick={() => respondToPartRequest(pendingPartIndex, "approved")}
-                disabled={responding}
-                className="py-3.5 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all shadow-lg shadow-green-500/20 disabled:opacity-60"
-              >
-                ✅ Approve
-              </button>
-            </div>
+                  {/* Part photo if available */}
+                  {part.photo && (
+                    <div className="rounded-xl overflow-hidden">
+                      <img src={part.photo} className="w-full h-36 object-cover" />
+                    </div>
+                  )}
 
-            {/* Call shop option */}
-            {shopPhone && (
-              <button
-                onClick={callShop}
-                className="w-full py-3 rounded-2xl border border-white/10 text-slate-400 text-sm flex items-center justify-center gap-2 active:bg-white/5 transition-colors"
-              >
-                <span>📞</span>
-                <span>Call shop to discuss instead</span>
-              </button>
-            )}
-          </div>
-        )}
+                  {/* Response confirmation for this specific part */}
+                  {responded ? (
+                    <div className={`rounded-2xl p-3.5 flex items-center gap-3 ${
+                      responded.startsWith("✅")
+                        ? "bg-green-500/10 border border-green-500/25"
+                        : "bg-red-500/10 border border-red-500/25"
+                    }`}>
+                      <p className="text-sm font-medium text-white">{responded}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-slate-400 text-xs text-center leading-relaxed">
+                        Tap Approve to let the mechanic proceed, or Reject to discuss.
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => respondToPartRequest(idx, "rejected")}
+                          disabled={responding}
+                          className="py-3.5 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-60"
+                        >
+                          ❌ Reject
+                        </button>
+                        <button
+                          onClick={() => respondToPartRequest(idx, "approved")}
+                          disabled={responding}
+                          className="py-3.5 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all shadow-lg shadow-green-500/20 disabled:opacity-60"
+                        >
+                          ✅ Approve
+                        </button>
+                      </div>
+                    </>
+                  )}
 
-        {/* Response confirmation message */}
-        {responseMsg && (
-          <div className={`rounded-2xl p-4 flex items-center gap-3 ${
-            responseMsg.startsWith("✅")
-              ? "bg-green-500/10 border border-green-500/25"
-              : "bg-red-500/10 border border-red-500/25"
-          }`}>
-            <p className="text-sm font-medium text-white">{responseMsg}</p>
+                  {/* Call shop option */}
+                  {shopPhone && !responded && (
+                    <button
+                      onClick={callShop}
+                      className="w-full py-3 rounded-2xl border border-white/10 text-slate-400 text-sm flex items-center justify-center gap-2 active:bg-white/5 transition-colors"
+                    >
+                      <span>📞</span>
+                      <span>Call shop to discuss instead</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
         {/* Part request history */}
-        {respondedParts.length > 0 && !pendingPart && (
+        {respondedParts.length > 0 && (
           <div className="space-y-2">
             <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Parts History</p>
             {respondedParts.map((part, i) => (

@@ -101,7 +101,14 @@ export default function App() {
   };
 
   const activeJobs = services.filter((s) => s.status < 3);
-  const doneJobs = services.filter((s) => s.status === 3);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const doneJobs = services.filter((s) => {
+    if (s.status !== 3) return false;
+    const ts = s.createdAt;
+    if (!ts) return false;
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toISOString().split("T")[0] === todayStr;
+  });
   const displayedJobs = filter === "active" ? activeJobs : doneJobs;
 
   if (view === "add") {
@@ -220,7 +227,7 @@ export default function App() {
         <div className="flex gap-2 px-4 pt-3">
           {[
             { key: "active", label: `Active (${activeJobs.length})` },
-            { key: "done", label: `Done (${doneJobs.length})` },
+            { key: "done", label: `Today's Done (${doneJobs.length})` },
           ].map(({ key, label }) => (
             <button
               key={key}
@@ -249,7 +256,7 @@ export default function App() {
               <p className="text-slate-600 text-sm mt-1">
                 {filter === "active"
                   ? "Tap + Add New Job to get started"
-                  : "Completed jobs appear here"}
+                  : "Jobs completed today appear here"}
               </p>
             </div>
           ) : (
