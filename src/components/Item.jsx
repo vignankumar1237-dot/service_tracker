@@ -115,10 +115,6 @@ export default function Item({ data, update, remove, isAdmin, shopData }) {
     window.location.href = `tel:${cleaned}`;
   };
 
-  // All pending part requests
-  const pendingParts = (data.partRequests || []).filter(p => p.status === "pending");
-  const latestResponse = data.partRequests?.slice().reverse().find(p => p.status !== "pending");
-
   return (
     <div className={`rounded-2xl border overflow-hidden transition-all ${
       data.status === 3
@@ -183,41 +179,49 @@ export default function Item({ data, update, remove, isAdmin, shopData }) {
           </p>
         ) : null}
 
-        {/* Pending part request banners — one per pending request */}
-        {pendingParts.length > 0 && (
+        {/* All part requests — every one shown with its individual status */}
+        {(data.partRequests || []).length > 0 && (
           <div className="space-y-1.5">
-            {pendingParts.map((part, i) => (
-              <div key={i} className="bg-amber-400/10 border border-amber-400/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
-                <span className="text-lg">⏳</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-amber-400 text-xs font-semibold">
-                    Awaiting approval {pendingParts.length > 1 ? `(${i + 1}/${pendingParts.length})` : ""}
-                  </p>
-                  <p className="text-slate-400 text-xs truncate">
-                    {part.partName} · ₹{part.price}
-                  </p>
+            {(data.partRequests || []).map((part, i) => {
+              const isPending = part.status === "pending";
+              const totalParts = (data.partRequests || []).length;
+              return (
+                <div
+                  key={i}
+                  className={`rounded-xl px-3 py-2.5 flex items-center gap-2 border ${
+                    isPending
+                      ? "bg-amber-400/10 border-amber-400/30"
+                      : part.status === "approved"
+                      ? "bg-green-500/10 border-green-500/25"
+                      : "bg-red-500/10 border-red-500/25"
+                  }`}
+                >
+                  <span className="text-base flex-shrink-0">
+                    {isPending ? "⏳" : part.status === "approved" ? "✅" : "❌"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-xs font-semibold truncate ${
+                      isPending ? "text-amber-400"
+                      : part.status === "approved" ? "text-green-400"
+                      : "text-red-400"
+                    }`}>
+                      {part.partName}
+                    </p>
+                    <p className="text-slate-500 text-xs">
+                      ₹{part.price} ·{" "}
+                      {isPending
+                        ? "Awaiting customer approval"
+                        : part.status === "approved"
+                        ? "Customer approved"
+                        : "Customer rejected"}
+                    </p>
+                  </div>
+                  {totalParts > 1 && (
+                    <span className="text-slate-600 text-xs flex-shrink-0">#{i + 1}</span>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Latest response banner */}
-        {pendingParts.length === 0 && latestResponse && (
-          <div className={`rounded-xl px-3 py-2.5 flex items-center gap-2 ${
-            latestResponse.status === "approved"
-              ? "bg-green-500/10 border border-green-500/25"
-              : "bg-red-500/10 border border-red-500/25"
-          }`}>
-            <span className="text-lg">{latestResponse.status === "approved" ? "✅" : "❌"}</span>
-            <div className="min-w-0 flex-1">
-              <p className={`text-xs font-semibold ${latestResponse.status === "approved" ? "text-green-400" : "text-red-400"}`}>
-                Customer {latestResponse.status === "approved" ? "approved" : "rejected"} the part
-              </p>
-              <p className="text-slate-400 text-xs truncate">
-                {latestResponse.partName} · ₹{latestResponse.price}
-              </p>
-            </div>
+              );
+            })}
           </div>
         )}
 

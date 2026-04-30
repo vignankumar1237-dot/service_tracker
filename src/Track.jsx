@@ -79,13 +79,9 @@ export default function Track() {
   const pct = (data.status / (STEPS.length - 1)) * 100;
   const isDone = data.status === 3;
 
-  // All pending part requests with their original indices
-  const pendingParts = (data.partRequests || [])
-    .map((p, i) => ({ ...p, originalIndex: i }))
-    .filter(p => p.status === "pending");
-
-  // All responded part requests (history)
-  const respondedParts = (data.partRequests || []).filter(p => p.status !== "pending");
+  // All part requests with their original indices
+  const allParts = (data.partRequests || []).map((p, i) => ({ ...p, originalIndex: i }));
+  const pendingCount = allParts.filter(p => p.status === "pending").length;
 
   const shopPhone = shopInfo?.ownerPhone || shopInfo?.phone;
 
@@ -132,33 +128,65 @@ export default function Track() {
           </div>
         )}
 
-        {/* ── PART APPROVAL CARDS ── one per pending request */}
-        {pendingParts.length > 0 && (
+        {/* ── ALL PART REQUEST CARDS ── pending + responded, all shown */}
+        {allParts.length > 0 && (
           <div className="space-y-4">
-            {pendingParts.length > 1 && (
+            {/* Summary banner when multiple pending */}
+            {pendingCount > 1 && (
               <div className="flex items-center gap-2 bg-amber-400/10 border border-amber-400/20 rounded-2xl px-4 py-2.5">
                 <span className="text-lg">🔩</span>
                 <p className="text-amber-400 text-sm font-semibold">
-                  {pendingParts.length} parts need your approval
+                  {pendingCount} parts need your approval
                 </p>
               </div>
             )}
-            {pendingParts.map((part) => {
+
+            {allParts.map((part) => {
               const idx = part.originalIndex;
-              const responded = responseMsgs[idx];
+              const isPending = part.status === "pending";
+              // Check local state first (optimistic UI), then fall back to Firestore status
+              const localResponse = responseMsgs[idx];
+
               return (
-                <div key={idx} className="bg-amber-400/10 border-2 border-amber-400/40 rounded-3xl p-5 space-y-4">
+                <div
+                  key={idx}
+                  className={`rounded-3xl p-5 space-y-4 border-2 ${
+                    isPending
+                      ? "bg-amber-400/10 border-amber-400/40"
+                      : part.status === "approved"
+                      ? "bg-green-500/8 border-green-500/30"
+                      : "bg-red-500/8 border-red-500/30"
+                  }`}
+                >
+                  {/* Card header */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">🔩</span>
                       <div>
-                        <p className="text-amber-400 font-bold text-sm">Part Replacement Needed</p>
-                        <p className="text-slate-400 text-xs">Your mechanic needs your approval</p>
+                        <p className={`font-bold text-sm ${
+                          isPending ? "text-amber-400"
+                          : part.status === "approved" ? "text-green-400"
+                          : "text-red-400"
+                        }`}>
+                          {isPending ? "Part Replacement Needed" : "Part Request"}
+                        </p>
+                        <p className="text-slate-400 text-xs">
+                          {isPending
+                            ? "Your mechanic needs your approval"
+                            : part.status === "approved"
+                            ? "You approved this part"
+                            : "You rejected this part"}
+                        </p>
                       </div>
                     </div>
-                    {pendingParts.length > 1 && (
-                      <span className="text-xs bg-amber-400/20 text-amber-300 px-2 py-1 rounded-lg font-semibold">
-                        {pendingParts.indexOf(part) + 1}/{pendingParts.length}
+                    {/* Part number badge when more than one total */}
+                    {allParts.length > 1 && (
+                      <span className={`text-xs px-2 py-1 rounded-lg font-semibold ${
+                        isPending ? "bg-amber-400/20 text-amber-300"
+                        : part.status === "approved" ? "bg-green-500/20 text-green-400"
+                        : "bg-red-500/20 text-red-400"
+                      }`}>
+                        #{idx + 1}
                       </span>
                     )}
                   </div>
@@ -182,78 +210,71 @@ export default function Track() {
                     </div>
                   )}
 
-                  {/* Response confirmation for this specific part */}
-                  {responded ? (
-                    <div className={`rounded-2xl p-3.5 flex items-center gap-3 ${
-                      responded.startsWith("✅")
-                        ? "bg-green-500/10 border border-green-500/25"
-                        : "bg-red-500/10 border border-red-500/25"
-                    }`}>
-                      <p className="text-sm font-medium text-white">{responded}</p>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-slate-400 text-xs text-center leading-relaxed">
-                        Tap Approve to let the mechanic proceed, or Reject to discuss.
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={() => respondToPartRequest(idx, "rejected")}
-                          disabled={responding}
-                          className="py-3.5 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-60"
-                        >
-                          ❌ Reject
-                        </button>
-                        <button
-                          onClick={() => respondToPartRequest(idx, "approved")}
-                          disabled={responding}
-                          className="py-3.5 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all shadow-lg shadow-green-500/20 disabled:opacity-60"
-                        >
-                          ✅ Approve
-                        </button>
+                  {/* Action area: pending → buttons, responded → status badge */}
+                  {isPending ? (
+                    localResponse ? (
+                      // Optimistic confirmation while Firestore syncs
+                      <div className={`rounded-2xl p-3.5 flex items-center gap-3 ${
+                        localResponse.startsWith("✅")
+                          ? "bg-green-500/10 border border-green-500/25"
+                          : "bg-red-500/10 border border-red-500/25"
+                      }`}>
+                        <p className="text-sm font-medium text-white">{localResponse}</p>
                       </div>
-                    </>
-                  )}
-
-                  {/* Call shop option */}
-                  {shopPhone && !responded && (
-                    <button
-                      onClick={callShop}
-                      className="w-full py-3 rounded-2xl border border-white/10 text-slate-400 text-sm flex items-center justify-center gap-2 active:bg-white/5 transition-colors"
-                    >
-                      <span>📞</span>
-                      <span>Call shop to discuss instead</span>
-                    </button>
+                    ) : (
+                      <>
+                        <p className="text-slate-400 text-xs text-center leading-relaxed">
+                          Tap Approve to let the mechanic proceed, or Reject to discuss.
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => respondToPartRequest(idx, "rejected")}
+                            disabled={responding}
+                            className="py-3.5 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-60"
+                          >
+                            ❌ Reject
+                          </button>
+                          <button
+                            onClick={() => respondToPartRequest(idx, "approved")}
+                            disabled={responding}
+                            className="py-3.5 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all shadow-lg shadow-green-500/20 disabled:opacity-60"
+                          >
+                            ✅ Approve
+                          </button>
+                        </div>
+                        {shopPhone && (
+                          <button
+                            onClick={callShop}
+                            className="w-full py-3 rounded-2xl border border-white/10 text-slate-400 text-sm flex items-center justify-center gap-2 active:bg-white/5 transition-colors"
+                          >
+                            <span>📞</span>
+                            <span>Call shop to discuss instead</span>
+                          </button>
+                        )}
+                      </>
+                    )
+                  ) : (
+                    // Already responded — show clear status
+                    <div className={`rounded-2xl p-3.5 flex items-center justify-center gap-2 ${
+                      part.status === "approved"
+                        ? "bg-green-500/15 border border-green-500/30"
+                        : "bg-red-500/15 border border-red-500/30"
+                    }`}>
+                      <span className="text-xl">
+                        {part.status === "approved" ? "✅" : "❌"}
+                      </span>
+                      <p className={`text-sm font-bold ${
+                        part.status === "approved" ? "text-green-400" : "text-red-400"
+                      }`}>
+                        {part.status === "approved"
+                          ? "Approved — Mechanic will proceed"
+                          : "Rejected — Shop will contact you"}
+                      </p>
+                    </div>
                   )}
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {/* Part request history */}
-        {respondedParts.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Parts History</p>
-            {respondedParts.map((part, i) => (
-              <div key={i} className={`rounded-xl px-4 py-3 flex items-center justify-between border ${
-                part.status === "approved"
-                  ? "bg-green-500/8 border-green-500/20"
-                  : "bg-red-500/8 border-red-500/20"
-              }`}>
-                <div>
-                  <p className="text-white text-sm font-medium">{part.partName}</p>
-                  <p className="text-slate-500 text-xs">₹{part.price}</p>
-                </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                  part.status === "approved"
-                    ? "bg-green-500/20 text-green-400"
-                    : "bg-red-500/20 text-red-400"
-                }`}>
-                  {part.status === "approved" ? "✅ Approved" : "❌ Rejected"}
-                </span>
-              </div>
-            ))}
           </div>
         )}
 
