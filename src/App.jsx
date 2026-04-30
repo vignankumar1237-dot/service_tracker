@@ -261,6 +261,7 @@ export default function App() {
                 remove={isAdmin ? remove : null}
                 shopName={shopData?.shopName}
                 isAdmin={isAdmin}
+                shopData={shopData}
               />
             ))
           )}

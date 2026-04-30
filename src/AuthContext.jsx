@@ -21,17 +21,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Register a new shop (owner)
-  const register = async ({ phone, shopName, shopImage }) => {
+  const register = async ({ phone, shopName, shopImage, ownerPhone }) => {
     const shopId = phone.replace(/\D/g, "");
     const shopRef = doc(db, "shops", shopId);
     const existing = await getDoc(shopRef);
     if (existing.exists()) throw new Error("ALREADY_REGISTERED");
+
+    const contactPhone = ownerPhone || phone;
 
     const data = {
       phone,
       shopName,
       shopImage: shopImage || null,
       shopId,
+      ownerPhone: contactPhone, // shown to customers as "Call Shop"
       createdAt: new Date().toISOString(),
     };
     await setDoc(shopRef, data);
@@ -44,7 +47,15 @@ export function AuthProvider({ children }) {
       addedAt: new Date().toISOString(),
     });
 
-    const session = { phone, shopName, shopImage: shopImage || null, shopId, role: "admin", staffName: "Owner" };
+    const session = {
+      phone,
+      shopName,
+      shopImage: shopImage || null,
+      shopId,
+      ownerPhone: contactPhone,
+      role: "admin",
+      staffName: "Owner",
+    };
     localStorage.setItem("shopSession", JSON.stringify(session));
     setShopData(session);
     return session;
@@ -64,6 +75,7 @@ export function AuthProvider({ children }) {
         shopName: data.shopName,
         shopImage: data.shopImage || null,
         shopId: data.shopId,
+        ownerPhone: data.ownerPhone || data.phone,
         role: "admin",
         staffName: "Owner",
       };
@@ -73,9 +85,6 @@ export function AuthProvider({ children }) {
     }
 
     // Second try: is this a staff member in any shop?
-    // We search all shops' staff subcollections for this phone
-    // For scalability, staff doc ID = their phone digits
-    // We need to know which shop — so we store a reverse lookup
     const staffIndexRef = doc(db, "staffIndex", cleanPhone);
     const staffIndexSnap = await getDoc(staffIndexRef);
 
@@ -96,6 +105,7 @@ export function AuthProvider({ children }) {
       shopName: shopInfo.shopName,
       shopImage: shopInfo.shopImage || null,
       shopId,
+      ownerPhone: shopInfo.ownerPhone || shopInfo.phone,
       role: staffInfo.role || "staff",
       staffName: staffInfo.name || "Staff",
     };

@@ -6,6 +6,7 @@ export default function ProfileSheet({ onClose }) {
   const { shopData, logout, updateProfile } = useAuth();
   const [editing, setEditing] = useState(false);
   const [shopName, setShopName] = useState(shopData?.shopName || "");
+  const [ownerPhone, setOwnerPhone] = useState(shopData?.ownerPhone || "");
   const [shopImage, setShopImage] = useState(shopData?.shopImage || null);
   const [imageFile, setImageFile] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -26,7 +27,7 @@ export default function ProfileSheet({ onClose }) {
       if (imageFile) {
         imageToSave = await compressShopLogo(imageFile);
       }
-      await updateProfile({ shopName: shopName.trim(), shopImage: imageToSave });
+      await updateProfile({ shopName: shopName.trim(), shopImage: imageToSave, ownerPhone: ownerPhone.trim() || shopData?.phone });
       setEditing(false);
     } finally {
       setSaving(false);
@@ -87,6 +88,23 @@ export default function ProfileSheet({ onClose }) {
                 onChange={(e) => setShopName(e.target.value)}
                 placeholder="Shop name"
               />
+
+              {/* Customer contact number */}
+              <div>
+                <label className="text-slate-500 text-xs mb-1.5 block">Customer Contact Number</label>
+                <div className="flex items-center bg-white/8 border border-white/10 rounded-xl overflow-hidden focus-within:border-amber-400/50">
+                  <span className="text-slate-400 pl-4 pr-2 text-sm">+91</span>
+                  <input
+                    className="flex-1 bg-transparent text-white py-3 pr-4 outline-none placeholder-slate-600 text-sm"
+                    placeholder="Number shown to customers"
+                    value={ownerPhone}
+                    onChange={(e) => setOwnerPhone(e.target.value)}
+                    type="tel"
+                    maxLength={15}
+                  />
+                </div>
+                <p className="text-slate-600 text-xs mt-1 px-1">Shown as "Call Shop" on tracking pages</p>
+              </div>
 
               <input ref={fileRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
 

@@ -7,6 +7,7 @@ export default function AuthScreen() {
   const [mode, setMode] = useState("login"); // "login" | "register"
   const [step, setStep] = useState(1); // register steps: 1=phone, 2=shop details
   const [phone, setPhone] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState(""); // direct call number shown to customers
   const [shopName, setShopName] = useState("");
   const [shopImage, setShopImage] = useState(null);
   const [shopImageFile, setShopImageFile] = useState(null);
@@ -57,7 +58,14 @@ export default function AuthScreen() {
       if (shopImageFile) {
         compressedImage = await compressShopLogo(shopImageFile);
       }
-      await register({ phone: phone.trim(), shopName: shopName.trim(), shopImage: compressedImage });
+      // ownerPhone defaults to the login phone if not separately set
+      const contactPhone = ownerPhone.trim() || phone.trim();
+      await register({
+        phone: phone.trim(),
+        shopName: shopName.trim(),
+        shopImage: compressedImage,
+        ownerPhone: contactPhone,
+      });
     } catch (err) {
       if (err.message === "ALREADY_REGISTERED") {
         setError("This number is already registered. Please login.");
@@ -195,8 +203,29 @@ export default function AuthScreen() {
                     value={shopName}
                     onChange={(e) => setShopName(e.target.value)}
                     autoFocus
-                    onKeyDown={(e) => e.key === "Enter" && handleRegister()}
                   />
+                </div>
+
+                {/* Owner contact number for customers */}
+                <div>
+                  <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2 block">
+                    Customer Contact Number
+                  </label>
+                  <div className="flex items-center bg-white/8 border border-white/10 rounded-xl overflow-hidden focus-within:border-amber-400/50 transition-colors">
+                    <span className="text-slate-400 pl-4 pr-2 text-sm">+91</span>
+                    <input
+                      className="flex-1 bg-transparent text-white py-3 pr-4 outline-none placeholder-slate-600 text-sm"
+                      placeholder="Number customers can call (default: login number)"
+                      value={ownerPhone}
+                      onChange={(e) => setOwnerPhone(e.target.value)}
+                      type="tel"
+                      maxLength={15}
+                      onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                    />
+                  </div>
+                  <p className="text-slate-600 text-xs mt-1.5 px-1">
+                    This number appears as "Call Shop" on customer tracking pages
+                  </p>
                 </div>
 
                 {/* Shop Logo */}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { db } from "./firebase";
-import { doc, onSnapshot, getDoc } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 
 const STEPS = ["Received", "In Progress", "Almost Done", "Ready! 🎉"];
 
@@ -11,6 +11,8 @@ export default function Track() {
 
   const [data, setData] = useState(null);
   const [shopInfo, setShopInfo] = useState(null);
+  const [responding, setResponding] = useState(false);
+  const [responseMsg, setResponseMsg] = useState("");
 
   // Fetch shop info once
   useEffect(() => {
@@ -30,6 +32,38 @@ export default function Track() {
     return () => unsub();
   }, [id, decodedShop]);
 
+  const respondToPartRequest = async (pendingIndex, decision) => {
+    setResponding(true);
+    try {
+      const updatedRequests = [...(data.partRequests || [])];
+      updatedRequests[pendingIndex] = {
+        ...updatedRequests[pendingIndex],
+        status: decision,
+        respondedAt: new Date().toISOString(),
+      };
+      await updateDoc(doc(db, "shops", decodedShop, "jobs", id), {
+        partRequests: updatedRequests,
+      });
+
+      if (decision === "approved") {
+        setResponseMsg("✅ You approved the part. The mechanic will proceed!");
+      } else {
+        setResponseMsg("❌ You rejected the part. The shop will contact you shortly.");
+      }
+    } catch (e) {
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setResponding(false);
+    }
+  };
+
+  const callShop = () => {
+    const phone = shopInfo?.ownerPhone || shopInfo?.phone;
+    if (!phone) return;
+    const cleaned = phone.replace(/\D/g, "");
+    window.location.href = `tel:${cleaned}`;
+  };
+
   if (!data) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -46,23 +80,45 @@ export default function Track() {
   const pct = (data.status / (STEPS.length - 1)) * 100;
   const isDone = data.status === 3;
 
+  // Find the first pending part request and its index
+  const pendingPartIndex = data.partRequests?.findIndex(p => p.status === "pending") ?? -1;
+  const pendingPart = pendingPartIndex >= 0 ? data.partRequests[pendingPartIndex] : null;
+
+  // All responded part requests (history)
+  const respondedParts = (data.partRequests || []).filter(p => p.status !== "pending");
+
+  const shopPhone = shopInfo?.ownerPhone || shopInfo?.phone;
+
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center py-8 px-4">
       <div className="w-full max-w-sm space-y-5">
 
         {/* Shop Header */}
-        <div className="flex items-center gap-3">
-          {shopInfo?.shopImage ? (
-            <img src={shopInfo.shopImage} className="w-12 h-12 rounded-2xl object-cover border border-white/10" />
-          ) : (
-            <div className="w-12 h-12 bg-amber-400/20 rounded-2xl flex items-center justify-center border border-amber-400/30">
-              <span className="text-xl">🔧</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {shopInfo?.shopImage ? (
+              <img src={shopInfo.shopImage} className="w-12 h-12 rounded-2xl object-cover border border-white/10" />
+            ) : (
+              <div className="w-12 h-12 bg-amber-400/20 rounded-2xl flex items-center justify-center border border-amber-400/30">
+                <span className="text-xl">🔧</span>
+              </div>
+            )}
+            <div>
+              <p className="text-white font-bold text-base">{shopInfo?.shopName || "Service Center"}</p>
+              <p className="text-slate-500 text-xs">Live Service Tracker</p>
             </div>
-          )}
-          <div>
-            <p className="text-white font-bold text-base">{shopInfo?.shopName || "Service Center"}</p>
-            <p className="text-slate-500 text-xs">Live Service Tracker</p>
           </div>
+
+          {/* Call Shop button */}
+          {shopPhone && (
+            <button
+              onClick={callShop}
+              className="flex items-center gap-1.5 bg-green-500/20 border border-green-500/30 rounded-xl px-3 py-2.5 text-green-400 text-xs font-bold active:bg-green-500/30 transition-colors flex-shrink-0"
+            >
+              <span>📞</span>
+              <span>Call Shop</span>
+            </button>
+          )}
         </div>
 
         {/* Vehicle Image */}
@@ -73,6 +129,109 @@ export default function Track() {
             <div className="absolute bottom-3 left-3 text-xs text-white font-medium bg-black/40 backdrop-blur-sm px-3 py-1 rounded-lg border border-white/10">
               📱 {data.phone}
             </div>
+          </div>
+        )}
+
+        {/* ── PART APPROVAL CARD ── show when there's a pending request */}
+        {pendingPart && !responseMsg && (
+          <div className="bg-amber-400/10 border-2 border-amber-400/40 rounded-3xl p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔩</span>
+              <div>
+                <p className="text-amber-400 font-bold text-sm">Part Replacement Needed</p>
+                <p className="text-slate-400 text-xs">Your mechanic needs your approval</p>
+              </div>
+            </div>
+
+            {/* Part details */}
+            <div className="bg-white/5 rounded-2xl p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <p className="text-slate-400 text-xs">Part</p>
+                <p className="text-white font-semibold text-sm">{pendingPart.partName}</p>
+              </div>
+              <div className="flex justify-between items-center">
+                <p className="text-slate-400 text-xs">Estimated Cost</p>
+                <p className="text-amber-400 font-bold text-lg">₹{pendingPart.price}</p>
+              </div>
+            </div>
+
+            {/* Part photo if available */}
+            {pendingPart.photo && (
+              <div className="rounded-xl overflow-hidden">
+                <img src={pendingPart.photo} className="w-full h-36 object-cover" />
+              </div>
+            )}
+
+            <p className="text-slate-400 text-xs text-center leading-relaxed">
+              Tap Approve to let the mechanic proceed, or Reject to discuss.
+              You can also call the shop directly.
+            </p>
+
+            {/* Approve / Reject buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => respondToPartRequest(pendingPartIndex, "rejected")}
+                disabled={responding}
+                className="py-3.5 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-60"
+              >
+                ❌ Reject
+              </button>
+              <button
+                onClick={() => respondToPartRequest(pendingPartIndex, "approved")}
+                disabled={responding}
+                className="py-3.5 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all shadow-lg shadow-green-500/20 disabled:opacity-60"
+              >
+                ✅ Approve
+              </button>
+            </div>
+
+            {/* Call shop option */}
+            {shopPhone && (
+              <button
+                onClick={callShop}
+                className="w-full py-3 rounded-2xl border border-white/10 text-slate-400 text-sm flex items-center justify-center gap-2 active:bg-white/5 transition-colors"
+              >
+                <span>📞</span>
+                <span>Call shop to discuss instead</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Response confirmation message */}
+        {responseMsg && (
+          <div className={`rounded-2xl p-4 flex items-center gap-3 ${
+            responseMsg.startsWith("✅")
+              ? "bg-green-500/10 border border-green-500/25"
+              : "bg-red-500/10 border border-red-500/25"
+          }`}>
+            <p className="text-sm font-medium text-white">{responseMsg}</p>
+          </div>
+        )}
+
+        {/* Part request history */}
+        {respondedParts.length > 0 && !pendingPart && (
+          <div className="space-y-2">
+            <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Parts History</p>
+            {respondedParts.map((part, i) => (
+              <div key={i} className={`rounded-xl px-4 py-3 flex items-center justify-between border ${
+                part.status === "approved"
+                  ? "bg-green-500/8 border-green-500/20"
+                  : "bg-red-500/8 border-red-500/20"
+              }`}>
+                <div>
+                  <p className="text-white text-sm font-medium">{part.partName}</p>
+                  <p className="text-slate-500 text-xs">₹{part.price}</p>
+                </div>
+                <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                  part.status === "approved"
+                    ? "bg-green-500/20 text-green-400"
+                    : "bg-red-500/20 text-red-400"
+                }`}>
+                  {part.status === "approved" ? "✅ Approved" : "❌ Rejected"}
+                </span>
+              </div>
+            ))}
           </div>
         )}
 
