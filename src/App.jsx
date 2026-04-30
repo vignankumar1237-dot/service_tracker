@@ -57,7 +57,7 @@ export default function App() {
     });
     setView("home");
   };
-
+//newcode
   // Update status
   const update = async (id, step, phone) => {
     // Open WhatsApp FIRST synchronously before any await
