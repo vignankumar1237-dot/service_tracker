@@ -5,7 +5,6 @@ import Item from "./components/Item";
 import ProfileSheet from "./ProfileSheet";
 import StaffManager from "./StaffManager";
 import AdminDashboard from "./AdminDashboard";
-//modules added//
 import { db } from "./firebase";
 import {
   collection,
