@@ -101,16 +101,16 @@ const update = async (id, step, phone) => {
     window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
   }
 
-  if (step === 3) {
-    const msg = encodeURIComponent(
-      `✅ *${shopData?.shopName}* — Your vehicle is *ready for pickup!* 🎉\n\nPlease come collect at your convenience.\n\nTrack here 👇\n${trackLink}`
-    );
-    const cleaned = phone.replace(/\D/g, "");
-    const waPhone = cleaned.startsWith("91") && cleaned.length === 12
-      ? cleaned
-      : `91${cleaned.replace(/^0/, "")}`;
-    window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
-  }
+  // if (step === 3) {
+  //   const msg = encodeURIComponent(
+  //     `✅ *${shopData?.shopName}* — Your vehicle is *ready for pickup!* 🎉\n\nPlease come collect at your convenience.\n\nTrack here 👇\n${trackLink}`
+  //   );
+  //   const cleaned = phone.replace(/\D/g, "");
+  //   const waPhone = cleaned.startsWith("91") && cleaned.length === 12
+  //     ? cleaned
+  //     : `91${cleaned.replace(/^0/, "")}`;
+  //   window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
+  // }
 
   await updateDoc(doc(db, "shops", shop, "jobs", id), { status: step });
 };
