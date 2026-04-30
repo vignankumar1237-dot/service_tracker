@@ -3,9 +3,9 @@ import { useAuth } from "./AuthContext";
 import Add from "./components/Add";
 import Item from "./components/Item";
 import ProfileSheet from "./ProfileSheet";
-import StaffManager from "./AdminDashboard";
-import AdminDashboard from "./StaffManager";
-//modules added
+import StaffManager from "./StaffManager";
+import AdminDashboard from "./AdminDashboard";
+//modules added//
 import { db } from "./firebase";
 import {
   collection,
