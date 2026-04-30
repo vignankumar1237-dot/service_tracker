@@ -26,6 +26,7 @@ export default function Add({ onSave, onBack, shopName }) {
   const handleImage = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    e.target.value = "";
     setCompressing(true);
     try {
       const compressed = await compressVehiclePhoto(file);
@@ -139,11 +140,12 @@ export default function Add({ onSave, onBack, shopName }) {
           <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2 block">
             Photo (optional)
           </label>
+
+          {/* No capture attribute — phone will show Camera + Gallery option natively on all devices */}
           <input
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handleImage}
             className="hidden"
           />
@@ -174,7 +176,7 @@ export default function Add({ onSave, onBack, shopName }) {
               <span className="text-3xl">📷</span>
               <div className="text-center">
                 <p className="text-sm font-medium">Take / Upload Photo</p>
-                <p className="text-xs text-slate-600 mt-0.5">Helps identify the item</p>
+                <p className="text-xs text-slate-600 mt-0.5">Camera or Gallery</p>
               </div>
             </button>
           )}
