@@ -1,14 +1,13 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [shopData, setShopData] = useState(null); // { phone, shopName, shopImage, shopId }
+  const [shopData, setShopData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, restore session from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("shopSession");
     if (saved) {
@@ -21,17 +20,12 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  /**
-   * Register a new shop
-   */
+  // Register a new shop (owner)
   const register = async ({ phone, shopName, shopImage }) => {
-    const shopId = phone.replace(/\D/g, ""); // use digits-only phone as ID
+    const shopId = phone.replace(/\D/g, "");
     const shopRef = doc(db, "shops", shopId);
-
     const existing = await getDoc(shopRef);
-    if (existing.exists()) {
-      throw new Error("ALREADY_REGISTERED");
-    }
+    if (existing.exists()) throw new Error("ALREADY_REGISTERED");
 
     const data = {
       phone,
@@ -40,65 +34,92 @@ export function AuthProvider({ children }) {
       shopId,
       createdAt: new Date().toISOString(),
     };
-
     await setDoc(shopRef, data);
 
-    const session = { phone, shopName, shopImage: shopImage || null, shopId };
+    // Add owner as first staff member with admin role
+    await setDoc(doc(db, "shops", shopId, "staff", shopId), {
+      phone,
+      name: "Owner",
+      role: "admin",
+      addedAt: new Date().toISOString(),
+    });
+
+    const session = { phone, shopName, shopImage: shopImage || null, shopId, role: "admin", staffName: "Owner" };
     localStorage.setItem("shopSession", JSON.stringify(session));
     setShopData(session);
     return session;
   };
 
-  /**
-   * Login with existing mobile number
-   */
+  // Login — checks if owner OR staff member
   const login = async (phone) => {
-    const shopId = phone.replace(/\D/g, "");
-    const shopRef = doc(db, "shops", shopId);
-    const snap = await getDoc(shopRef);
+    const cleanPhone = phone.replace(/\D/g, "");
 
-    if (!snap.exists()) {
-      throw new Error("NOT_FOUND");
+    // First try: is this an owner?
+    const shopRef = doc(db, "shops", cleanPhone);
+    const snap = await getDoc(shopRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const session = {
+        phone: data.phone,
+        shopName: data.shopName,
+        shopImage: data.shopImage || null,
+        shopId: data.shopId,
+        role: "admin",
+        staffName: "Owner",
+      };
+      localStorage.setItem("shopSession", JSON.stringify(session));
+      setShopData(session);
+      return session;
     }
 
-    const data = snap.data();
-    const session = {
-      phone: data.phone,
-      shopName: data.shopName,
-      shopImage: data.shopImage || null,
-      shopId: data.shopId,
-    };
+    // Second try: is this a staff member in any shop?
+    // We search all shops' staff subcollections for this phone
+    // For scalability, staff doc ID = their phone digits
+    // We need to know which shop — so we store a reverse lookup
+    const staffIndexRef = doc(db, "staffIndex", cleanPhone);
+    const staffIndexSnap = await getDoc(staffIndexRef);
 
+    if (!staffIndexSnap.exists()) throw new Error("NOT_FOUND");
+
+    const { shopId } = staffIndexSnap.data();
+    const shopSnap = await getDoc(doc(db, "shops", shopId));
+    if (!shopSnap.exists()) throw new Error("NOT_FOUND");
+
+    const staffSnap = await getDoc(doc(db, "shops", shopId, "staff", cleanPhone));
+    if (!staffSnap.exists()) throw new Error("NOT_FOUND");
+
+    const shopInfo = shopSnap.data();
+    const staffInfo = staffSnap.data();
+
+    const session = {
+      phone: staffInfo.phone,
+      shopName: shopInfo.shopName,
+      shopImage: shopInfo.shopImage || null,
+      shopId,
+      role: staffInfo.role || "staff",
+      staffName: staffInfo.name || "Staff",
+    };
     localStorage.setItem("shopSession", JSON.stringify(session));
     setShopData(session);
     return session;
   };
 
-  /**
-   * Logout
-   */
   const logout = () => {
     localStorage.removeItem("shopSession");
     setShopData(null);
   };
 
-  /**
-   * Update shop profile
-   */
   const updateProfile = async (updates) => {
     if (!shopData) return;
     const shopRef = doc(db, "shops", shopData.shopId);
     await setDoc(shopRef, updates, { merge: true });
-
     const updated = { ...shopData, ...updates };
     localStorage.setItem("shopSession", JSON.stringify(updated));
     setShopData(updated);
   };
 
   return (
-    <AuthContext.Provider
-      value={{ shopData, loading, register, login, logout, updateProfile }}
-    >
+    <AuthContext.Provider value={{ shopData, loading, register, login, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

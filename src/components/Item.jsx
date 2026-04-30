@@ -1,4 +1,4 @@
-const STATUS_LABELS = ["Received", "Started", "In Progress", "Ready ✓"];
+const STATUS_LABELS = ["Received", "Started", "In Progress", "Done ✓"];
 const STATUS_COLORS = [
   "bg-slate-700 text-slate-300",
   "bg-blue-500/20 text-blue-300 border-blue-500/30",
@@ -6,7 +6,7 @@ const STATUS_COLORS = [
   "bg-green-500/20 text-green-300 border-green-500/30",
 ];
 
-export default function Item({ data, update, remove, shopName }) {
+export default function Item({ data, update, remove, isAdmin }) {
   const isDisabled = (step) => {
     if (data.status === 0) return step !== 1;
     if (data.status === 1) return false;
@@ -37,47 +37,54 @@ export default function Item({ data, update, remove, shopName }) {
         : "bg-white/4 border-white/10"
     }`}>
 
-      {/* Vehicle Image */}
+      {/* Vehicle/Item Image */}
       {data.image && (
         <div className="relative">
-          <img
-            src={data.image}
-            className="w-full h-40 object-cover"
-          />
-          {/* Status badge on image */}
-          <div className={`absolute top-3 right-3 text-xs font-bold px-3 py-1 rounded-full border backdrop-blur-sm ${STATUS_COLORS[data.status]}`}>
+          <img src={data.image} className="w-full h-36 object-cover" />
+          <div className={`absolute top-2 right-2 text-xs font-bold px-2.5 py-1 rounded-full border backdrop-blur-sm ${STATUS_COLORS[data.status]}`}>
             {STATUS_LABELS[data.status]}
           </div>
         </div>
       )}
 
-      <div className="p-4 space-y-4">
+      <div className="p-3.5 space-y-3">
 
         {/* Top row */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {/* Avatar */}
-            <div className="w-11 h-11 rounded-xl bg-slate-700 flex items-center justify-center text-xl flex-shrink-0">
-              🚗
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center text-lg flex-shrink-0">
+              🔧
             </div>
-            <div>
-              <p className="text-white font-bold text-base tracking-wide">
+            <div className="min-w-0">
+              <p className="text-white font-bold text-sm tracking-wide truncate">
                 📱 {data.phone}
               </p>
-              <p className="text-slate-500 text-xs mt-0.5">{timeAgo(data.createdAt)}</p>
+              {data.serviceType && (
+                <p className="text-amber-400/80 text-xs truncate">{data.serviceType}</p>
+              )}
+              <p className="text-slate-500 text-xs">
+                {timeAgo(data.createdAt)}
+                {data.addedBy ? ` · ${data.addedBy}` : ""}
+              </p>
             </div>
           </div>
 
-          {/* Status badge (when no image) */}
           {!data.image && (
-            <div className={`text-xs font-bold px-3 py-1.5 rounded-full border ${STATUS_COLORS[data.status]}`}>
+            <div className={`text-xs font-bold px-2.5 py-1.5 rounded-full border flex-shrink-0 ${STATUS_COLORS[data.status]}`}>
               {STATUS_LABELS[data.status]}
             </div>
           )}
         </div>
 
-        {/* Progress dots */}
-        <div className="flex items-center gap-1.5">
+        {/* Notes */}
+        {data.notes ? (
+          <p className="text-slate-400 text-xs bg-white/4 rounded-lg px-3 py-2 leading-relaxed">
+            📝 {data.notes}
+          </p>
+        ) : null}
+
+        {/* Progress bar */}
+        <div className="flex items-center gap-1">
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
@@ -89,16 +96,16 @@ export default function Item({ data, update, remove, shopName }) {
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             disabled={isDisabled(1)}
             onClick={() => handleClick(1)}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+            className={`py-3 rounded-xl text-xs font-bold transition-all active:scale-95 ${
               data.status >= 1
                 ? "bg-blue-500 text-white"
                 : isDisabled(1)
                 ? "bg-white/5 text-slate-600 cursor-not-allowed"
-                : "bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30"
+                : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
             }`}
           >
             ▶ Start
@@ -107,12 +114,12 @@ export default function Item({ data, update, remove, shopName }) {
           <button
             disabled={isDisabled(2)}
             onClick={() => handleClick(2)}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+            className={`py-3 rounded-xl text-xs font-bold transition-all active:scale-95 ${
               data.status >= 2
                 ? "bg-amber-500 text-white"
                 : isDisabled(2)
                 ? "bg-white/5 text-slate-600 cursor-not-allowed"
-                : "bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30"
+                : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
             }`}
           >
             ⚙ Work
@@ -121,25 +128,27 @@ export default function Item({ data, update, remove, shopName }) {
           <button
             disabled={isDisabled(3)}
             onClick={() => handleClick(3)}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+            className={`py-3 rounded-xl text-xs font-bold transition-all active:scale-95 ${
               data.status >= 3
                 ? "bg-green-500 text-white"
                 : isDisabled(3)
                 ? "bg-white/5 text-slate-600 cursor-not-allowed"
-                : "bg-green-500/20 text-green-300 border border-green-500/30 hover:bg-green-500/30"
+                : "bg-green-500/20 text-green-300 border border-green-500/30"
             }`}
           >
             ✓ Done
           </button>
         </div>
 
-        {/* Delete */}
-        <button
-          onClick={() => remove(data.id)}
-          className="w-full py-2 rounded-xl border border-red-500/15 text-red-500/60 text-xs hover:bg-red-500/8 hover:text-red-400 transition-colors"
-        >
-          🗑 Remove Record
-        </button>
+        {/* Delete — admin only */}
+        {remove && (
+          <button
+            onClick={() => remove(data.id)}
+            className="w-full py-2 rounded-xl border border-red-500/15 text-red-500/60 text-xs hover:bg-red-500/8 hover:text-red-400 transition-colors"
+          >
+            🗑 Remove Record
+          </button>
+        )}
       </div>
     </div>
   );
