@@ -59,19 +59,10 @@ export default function App() {
   };
 
   // Update status
-  // IMPORTANT: Save to Firestore FIRST, then open WhatsApp
-  // Use window.open(_blank) — keeps your PWA alive in background
-  // User sends WA message, then swipes back / uses app switcher to return
   const update = async (id, step, phone) => {
-    // Save status first — works even if WhatsApp open fails
-    await updateDoc(doc(db, "shops", shop, "jobs", id), {
-      status: step,
-      [`statusHistory.step${step}`]: {
-        by: shopData?.staffName || "Staff",
-        at: new Date().toISOString(),
-      },
-    });
-
+    // Open WhatsApp FIRST synchronously before any await
+    // Using invisible <a> click — works on iOS Safari + Android Chrome
+    // window.open after await gets blocked on all mobiles
     if (step === 1) {
       const trackLink = `${window.location.origin}/track/${shop}/${id}`;
       const msg = encodeURIComponent(
@@ -83,12 +74,23 @@ export default function App() {
           ? cleaned
           : `91${cleaned.replace(/^0/, "")}`;
 
-      // window.open keeps your PWA open in background.
-      // Android: WhatsApp opens as separate app, swipe back = your app.
-      // iOS: same via app switcher.
-      // Never use window.location.href — that kills your app state.
-      window.open(`https://wa.me/${waPhone}?text=${msg}`, "_blank");
+      const a = document.createElement("a");
+      a.href = `https://wa.me/${waPhone}?text=${msg}`;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
+
+    // Save to Firestore after
+    await updateDoc(doc(db, "shops", shop, "jobs", id), {
+      status: step,
+      [`statusHistory.step${step}`]: {
+        by: shopData?.staffName || "Staff",
+        at: new Date().toISOString(),
+      },
+    });
   };
 
   // Delete — admin only
