@@ -3,8 +3,8 @@ import { useAuth } from "./AuthContext";
 import Add from "./components/Add";
 import Item from "./components/Item";
 import ProfileSheet from "./ProfileSheet";
-import StaffManager from "./Staffmanager";
-import AdminDashboard from "./Admindashboard";
+import StaffManager from "./StaffManager";
+import AdminDashboard from "./AdminDashboard";
 
 import { db } from "./firebase";
 import {
