@@ -1,8 +1,17 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const AuthContext = createContext(null);
+
+// Always normalise to a clean 10-digit number
+// Handles: "98765 43210", "+91 98765 43210", "09876543210", "919876543210"
+function normalisePhone(phone) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("91") && digits.length === 12) return digits.slice(2);
+  if (digits.startsWith("0") && digits.length === 11) return digits.slice(1);
+  return digits;
+}
 
 export function AuthProvider({ children }) {
   const [shopData, setShopData] = useState(null);
@@ -22,33 +31,36 @@ export function AuthProvider({ children }) {
 
   // Register a new shop (owner)
   const register = async ({ phone, shopName, shopImage, ownerPhone }) => {
-    const shopId = phone.replace(/\D/g, "");
+    // Normalise so "98765 43210" and "+919876543210" both map to same shopId
+    const shopId = normalisePhone(phone);
     const shopRef = doc(db, "shops", shopId);
     const existing = await getDoc(shopRef);
     if (existing.exists()) throw new Error("ALREADY_REGISTERED");
 
-    const contactPhone = ownerPhone || phone;
+    const contactPhone = ownerPhone
+      ? normalisePhone(ownerPhone)
+      : shopId;
 
     const data = {
-      phone,
+      phone: shopId,
       shopName,
       shopImage: shopImage || null,
       shopId,
-      ownerPhone: contactPhone, // shown to customers as "Call Shop"
+      ownerPhone: contactPhone,
       createdAt: new Date().toISOString(),
     };
     await setDoc(shopRef, data);
 
     // Add owner as first staff member with admin role
     await setDoc(doc(db, "shops", shopId, "staff", shopId), {
-      phone,
+      phone: shopId,
       name: "Owner",
       role: "admin",
       addedAt: new Date().toISOString(),
     });
 
     const session = {
-      phone,
+      phone: shopId,
       shopName,
       shopImage: shopImage || null,
       shopId,
@@ -63,7 +75,7 @@ export function AuthProvider({ children }) {
 
   // Login — checks if owner OR staff member
   const login = async (phone) => {
-    const cleanPhone = phone.replace(/\D/g, "");
+    const cleanPhone = normalisePhone(phone);
 
     // First try: is this an owner?
     const shopRef = doc(db, "shops", cleanPhone);
