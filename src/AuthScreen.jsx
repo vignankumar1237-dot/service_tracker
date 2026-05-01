@@ -231,7 +231,7 @@ export default function AuthScreen() {
                 {/* Shop Logo */}
                 <div>
                   <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2 block">Shop Logo (optional)</label>
-                  <input ref={fileRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
+                  <input ref={fileRef} type="file" accept="image/png, image/jpeg, image/webp, image/gif" onChange={handleImagePick} className="hidden" />
 
                   {shopImage ? (
                     <div className="relative">
