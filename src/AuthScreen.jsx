@@ -86,7 +86,7 @@ export default function AuthScreen() {
         <div className="w-16 h-16 bg-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-400/30">
           <span className="text-3xl">🔧</span>
         </div>
-        <h1 className="text-white text-2xl font-bold tracking-tight">ServiceTrack</h1>
+        <h1 className="text-white text-2xl font-bold tracking-tight">ServiceTracker</h1>
         <p className="text-slate-400 text-sm mt-1">Workshop Management</p>
       </div>
 

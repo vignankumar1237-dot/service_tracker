@@ -294,7 +294,7 @@ export default function Track() {
               {STEPS[data.status]}
             </h2>
             {isDone && (
-              <p className="text-green-400/70 text-sm mt-1">Please come collect your vehicle</p>
+              <p className="text-green-400/70 text-sm mt-1">Please come and collect</p>
             )}
           </div>
 
